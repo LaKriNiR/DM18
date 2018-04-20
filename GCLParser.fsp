@@ -1,0 +1,72 @@
+%{
+open GCLTypesAST
+%}
+
+
+%token <String> NAME
+%token <int> NUMBER
+
+%token TIMES DIV PLUS MINUS POW LPAR RPAR OPTION AND AND_SHORT OR OR_SHORT NOT SEMICOLON IF END_IF 
+%token DO END_DO ASSIGN ARROW EOF EQUALS NOT_EQUALS LESS_THAN GREATER_THAN
+%token LESS_OR_EQUALS GREATER_OR_EQUALS
+%token TRUE FALSE SKIP
+
+%left PLUS MINUS
+%left TIMES DIV
+%right POW
+%left OR OR_SHORT
+%left AND AND_SHORT
+%right NOT
+%right OPTION
+%right SEMICOLON
+
+%start start
+
+%type <C> start
+%type <C> command
+%type <GC> guardedcom
+%type <A> arithm
+%type <B> bool
+
+%%
+
+start: command EOF                  { $1 }
+
+arithm:
+   | NAME                           { Name($1) }
+   | NUMBER                         { Number($1) }
+   | MINUS arithm                   { UMinus($2) }
+   | arithm PLUS arithm             { Add($1,$3) }
+   | arithm MINUS arithm            { Subtr($1,$3) }
+   | arithm TIMES arithm            { Mult($1,$3) }
+   | arithm DIV arithm              { Div($1,$3) }
+   | arithm POW arithm              { Power($1,$3) }
+   | LPAR arithm RPAR               { $2 }
+
+bool:
+  | bool AND bool                   { And($1,$3) }
+  | bool AND_SHORT bool             { AndShort($1,$3) }
+  | bool OR bool                    { Or($1,$3) }
+  | bool OR_SHORT bool              { OrShort($1,$3) }
+  | NOT bool                        { Not($2) }
+  | arithm EQUALS arithm            { Equality($1,$3) }
+  | arithm NOT_EQUALS arithm        { Inequality($1,$3) }
+  | arithm LESS_THAN arithm         { LessThan($1,$3) }
+  | arithm LESS_OR_EQUALS arithm    { LessOrEqual($1,$3) }
+  | arithm GREATER_THAN arithm      { GreaterThan($1,$3) }
+  | arithm GREATER_OR_EQUALS arithm { GreaterOrEqual($1,$3) }
+  | LPAR bool RPAR                  { $2 }
+  | TRUE                            { True }
+  | FALSE                           { False }
+ 
+command:
+  | NAME ASSIGN arithm              { Assign(Name($1),$3) }
+  | command SEMICOLON command       { CList($1,$3) }
+  | IF guardedcom END_IF            { If($2) }
+  | DO guardedcom END_DO            { Do($2) }
+  | SKIP                            { Skip }
+
+guardedcom:
+  | bool ARROW command              { Guarded($1,$3) }
+  | guardedcom OPTION guardedcom    { GCList($1,$3) }
+  
